@@ -18,23 +18,22 @@ app.get('/totalRecovered',(req,res)=>{
 
 app.get('/totalActive',(req,res)=>{
     connection.aggregate([
-        { $match: {} },
-        { $group: { _id: "total", recovered: { $sum: "$recovered" }, infected: { $sum: "$infected" } } }
-     ]).then((ele)=>res.send({data: {_id: "total", recovered:ele[0].infected-ele[0].recovered}}));
+        { $group: { _id: "", infected:{ $sum: "$infected"},recovered:{$sum: "$recovered"}  }}
+     ])
+     .then((ele)=>res.send({data: {_id: "total", active:ele[0].infected-ele[0].recovered}}))
+     .catch(err=>res.send(err.message));
 });
 
 app.get('/hotspotStates',(req,res)=>{
     connection.aggregate([
-        { $match: {} },
-        { $group: { _id: "total", death: { $sum: "$death" } } }
-     ]).then((ele)=>res.send({"data":ele[0]}));
+        { $group: { _id: "", infected:{ $sum: "$infected"},recovered:{$sum: "$recovered"}  }}
+     ])
+     .then((ele)=>res.send({data: {_id: "total", active:(ele[0].infected-ele[0].recovered)/ele[0].infected}}))
+     .catch(err=>res.send(err.message));
 });
 
 app.get('/totalDeath',(req,res)=>{
-    connection.aggregate([
-        { $match: {} },
-        { $group: { _id: "total", death: { $sum: "$death" } } }
-     ]).then((ele)=>res.send({"data":ele[0]}));
+    connection.find({$gte:[{$divide:[{$subtract:[infected,recovered]},infected]},0.1]}).then((ele)=>res.send(ele));
 });
 
 // /healthyStates
