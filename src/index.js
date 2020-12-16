@@ -41,36 +41,55 @@ app.get('/totalDeath',(req,res)=>{
      }).catch((err)=>res.json({error:err.message}));
 });
 
-app.get('/hotspotStates',(req,res)=>{
-    connection.aggregate({
-        $filter: {
-            cond: {
-                $and: [
-                    {$gt: [ {$round : [ {$divide:[{$subtract:["$infected","$recovered"]},"$infected"]}, 5 ]}, 0.1 ]},
-                    {$gt: [ {$round : [ {$divide:[{$subtract:["$infected","$recovered"]},"$infected"]}, 5 ]}, 0.1 ]}
-                  ]
-            }
-        }
-    }).then((result)=>{
-        res.send(result);
-    }).catch(err=>res.json({err:err.message}));
+app.get(`/hotspotStates`, (req, res) => {
+  connection
+    .aggregate([
+      {
+        $project: {
+          _id: 0,
+          state: "$state",
+          rate: {
+            $round: [
+              { $subtract: [1, { $divide: ["$recovered", "$infected"] }] },
+              5,
+            ],
+          },
+        },
+      },
+      {
+        $match: {
+          rate: { $gt: 0.1 },
+        },
+      },
+    ])
+    .exec()
+    .then((result) => {
+      res.send({ data: result });
+    })
+    .catch((err) => console.log("sm error....", err));
 });
 
-
-
-app.get('/healthyStates',(req,res)=>{
-    connection.aggregate({
-        $filter: {
-            cond: {
-                $lt: [ {$round : [ {$divide:["$death","$infected"]}, 5 ]}, 0.005 ]
-            }
-        }
-    }).then((result)=>{
-        res.send(result);
-    }).catch(err=>res.json({err:err.message}));
+app.get(`/healthyStates`, (req, res) => {
+  connection
+    .aggregate([
+      {
+        $project: {
+          _id: 0,
+          state: "$state",
+          mortality: { $round: [{ $divide: ["$death", "$infected"] }, 5] },
+        },
+      },
+      {
+        $match: {
+          mortality: { $lt: 0.005 },
+        },
+      },
+    ])
+    .exec()
+    .then((result) => {res.send({ data: result });
+    })
+    .catch((err) => console.log("sm error....", err));
 });
-
-
 
 app.listen(port, () => console.log(`App listening on port ${port}!`));
 
