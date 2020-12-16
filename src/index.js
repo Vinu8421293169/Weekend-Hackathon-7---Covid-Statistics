@@ -42,21 +42,32 @@ app.get('/totalDeath',(req,res)=>{
 });
 
 app.get('/hotspotStates',(req,res)=>{
-    connection.update({
-         $set:{mortality:{$round : [ {$divide:[{$subtract:["$infected","$recovered"]},"$infected"]}, 5 ]}}
-    }).find({mortality:{$gt:0.1}}).then((result)=>{
+    connection.aggregate({
+        $filter: {
+            cond: {
+                $and: [
+                    {$gt: [ {$round : [ {$divide:[{$subtract:["$infected","$recovered"]},"$infected"]}, 5 ]}, 0.1 ]},
+                    {$gt: [ {$round : [ {$divide:[{$subtract:["$infected","$recovered"]},"$infected"]}, 5 ]}, 0.1 ]}
+                  ]
+            }
+        }
+    }).then((result)=>{
         res.send(result);
-    }).catch(err=>console.log(err.message));
+    }).catch(err=>res.json({err:err.message}));
 });
 
 
 
 app.get('/healthyStates',(req,res)=>{
-    connection.update({
-        $set:{mortality:{$round : [ {$divide:[{$subtract:["$infected","$recovered"]},"$infected"]}, 5 ]}}
-   }).find({mortality:{$gt:0.1}}).then((result)=>{
-       res.send(result);
-   }).catch(err=>console.log(err.message));
+    connection.aggregate({
+        $filter: {
+            cond: {
+                $lt: [ {$round : [ {$divide:["$death","$infected"]}, 5 ]}, 0.005 ]
+            }
+        }
+    }).then((result)=>{
+        res.send(result);
+    }).catch(err=>res.json({err:err.message}));
 });
 
 
