@@ -12,29 +12,44 @@ const { connection } = require('./connector');
 app.get('/totalRecovered',(req,res)=>{
     connection.aggregate([
         { $match: {} },
-        { $group: { _id: "", total: { $sum: "$recovered" } } }
-     ]).then((ele)=>res.send({data: {_id: "total", recovered:ele[0].total}}));
+        { $group: { _id: "total", recovered: { $sum: "$recovered" } } }
+     ]).then((ele)=>res.send({data:ele[0]}));
 });
 
 app.get('/totalActive',(req,res)=>{
     connection.aggregate([
-        { $group: { _id: "", infected:{ $sum: "$infected"},recovered:{$sum: "$recovered"}  }}
-     ])
-     .then((ele)=>res.send({data: {_id: "total", active:ele[0].infected-ele[0].recovered}}))
-     .catch(err=>res.send(err.message));
-});
-
-app.get('/hotspotStates',(req,res)=>{
-    connection.aggregate([
-        { $group: { _id: "", infected:{ $sum: "$infected"},recovered:{$sum: "$recovered"}  }}
-     ])
-     .then((ele)=>res.send({data: {_id: "total", active:(ele[0].infected-ele[0].recovered)/ele[0].infected}}))
-     .catch(err=>res.send(err.message));
+        { $match: {} },
+        {
+            $group : {
+                _id: "total",active: { $sum: { $subtract: [ "$infected", "$recovered" ] } }
+            }
+        }
+     ]).then((ele)=>res.send({data:ele[0]}));
 });
 
 app.get('/totalDeath',(req,res)=>{
-    connection.find({$gte:[{$divide:[{$subtract:[infected,recovered]},infected]},0.1]}).then((ele)=>res.send(ele));
+    connection.aggregate([
+        { $match: {} },
+        {
+            $group : {
+                _id: "total",
+               death: { $sum: "$death" }
+            }
+        }
+     ]).then((ele)=>{
+         res.send({data:ele[0]});
+     }).catch((err)=>res.json({error:err.message}));
 });
+
+app.get('/hotspotStates',(req,res)=>{
+    connection.update({
+         $set:{mortality:{$round : [ {$divide:[{$subtract:["$infected","$recovered"]},"$infected"]}, 5 ]}}
+    }).find({mortality:{$gt:0.1}}).then((result)=>{
+        res.send(result);
+    }).catch(err=>console.log(err.message));
+});
+
+
 
 // /healthyStates
 
